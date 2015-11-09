@@ -9,6 +9,6 @@ The project can be set up as a Maven project in Eclipse. The pom.xml file specif
 
 *CreateStream.java* class requires the **access token** and **access token secret** for the authenticating user and can be modified to take these arguments from the command line but currently they have to be hard coded in to the application. 
 
-*DBConnect.java* contains the credentials to connect to the local mysql database. Modifiy the connection string with the name of the database and username nad password.
+*DBConnect.java* contains the credentials to connect to the local mysql database. Modifiy the connection string with the name of the database and specify the *username* and *password*.
 
-*wp_twitter_data.sql* is the script for creation of the database table that that application uses. 
+*wp_twitter_data.sql* is the script for creating the database table that the application uses. 
