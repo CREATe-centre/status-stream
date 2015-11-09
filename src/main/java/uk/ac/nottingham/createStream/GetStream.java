@@ -28,8 +28,8 @@ public class GetStream {
 	/**
 	 * Enter the Twitter application consumer key and consumer secret. 
 	 */
-	final static String consumerKey = "xjUeizYakyKwnT3baI6LqwCTf";
-	final static String consumerSecret = "4WoilzrO7CQi9gdgEWgJyqsFuwjmCe19jF8GpRa6FdGtOqodRq";
+	final static String consumerKey = "";
+	final static String consumerSecret = "";
 	
 	/**
 	 * Open user stream for specific authenticated user and start capturing event data to database.
