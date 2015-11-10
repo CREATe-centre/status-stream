@@ -2,35 +2,30 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>nottingham.ac.uk</groupId>
-	<artifactId>CREATeStream</artifactId>
+	<artifactId>status-stream</artifactId>
 	<version>0.0.1</version>
-	<name>CREATeStream</name>
-	<description>Capture Steam from Twitter Streaming API</description>
+	<name>status-stream</name>
+	<description>Status: Twitter Analytics Tool for User Statistics - Stream</description>
 	<dependencies>
 		<dependency>
 			<groupId>org.twitter4j</groupId>
 			<artifactId>twitter4j-core</artifactId>
 			<version>4.0.4</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.twitter4j</groupId>
 			<artifactId>twitter4j-stream</artifactId>
 			<version>4.0.4</version>
 		</dependency>
-
 		<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
 			<version>5.1.37</version>
 		</dependency>
-		
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
 			<version>3.4</version>
 		</dependency>
-
 	</dependencies>
 </project>
-;
