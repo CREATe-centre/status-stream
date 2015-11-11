@@ -28,8 +28,13 @@ public class GetStream {
 	/**
 	 * Enter the Twitter application consumer key and consumer secret. 
 	 */
-	final static String consumerKey = "";
-	final static String consumerSecret = "";
+	private final String consumerKey;
+	private final String consumerSecret;
+	
+	public GetStream(String consumerKey, String consumerSecret) {
+		this.consumerKey = consumerKey;
+		this.consumerSecret = consumerSecret;
+	}
 	
 	/**
 	 * Open user stream for specific authenticated user and start capturing event data to database.
@@ -334,7 +339,7 @@ public class GetStream {
 	 *  @param accessTokenSecret
 	 *  @return
 	 */
-	private static Configuration getConfiguration(String accessToken, String accessTokenSecret) {
+	private Configuration getConfiguration(String accessToken, String accessTokenSecret) {
 		ConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
 		return configurationBuilder
 				.setDebugEnabled(true)
