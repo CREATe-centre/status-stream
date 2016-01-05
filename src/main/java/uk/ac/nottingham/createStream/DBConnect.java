@@ -7,5 +7,5 @@ package uk.ac.nottingham.createStream;
 public class DBConnect {    
     public static String connectionString = "jdbc:mysql://localhost:3306/wordpress";
     public static String dbName = "root";
-    public static String passsord = "";
+    public static String passsord = "password";
 }

@@ -24,14 +24,21 @@ public class CreateStream {
 		WordPressUtil.OAuthSettings oauth =
 				WordPressUtil.fetchOAuthSettings(conn, config.dbPrefix);
 		
-		GetStream stream = new GetStream(oauth.consumerKey, oauth.consumerSecret);
+		Database database = new Database();
 		
+		final String tableName = "wp_twitter_data";		
+		final String tableSQL = "CREATE TABLE " + tableName 
+				+ " (id bigint(255) NOT NULL AUTO_INCREMENT, "
+				+ "userid bigint(50) NOT NULL, "
+				+ "event varchar(25) NOT NULL, "
+				+ "JSONdata varchar(10000) NOT NULL, "
+				+ "created_datetime varchar(50) NOT NULL, "
+				+ "PRIMARY KEY (id))";
+		
+		database.createCustomTable(tableSQL, tableName);		
+		GetStream stream = new GetStream(oauth.consumerKey, oauth.consumerSecret);		
 		for(WordPressUtil.WpUser user : WordPressUtil.fetchUsers(conn, config.dbPrefix)) {
-			stream.createStream(
-					user.oauthToken,
-					user.oauthTokenSecret);
-		}
-		
-		
+			stream.createStream(user.oauthToken, user.oauthTokenSecret);
+		}				
 	}
 }

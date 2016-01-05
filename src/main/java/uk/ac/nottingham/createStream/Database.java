@@ -2,9 +2,12 @@ package uk.ac.nottingham.createStream;
 
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 public class Database {	
 	
@@ -38,8 +41,8 @@ public class Database {
 			final PreparedStatement preparedStatement = connection
 					.prepareStatement(
 							"INSERT INTO "
-									+ "wp_twitter_data "
-									+ "(userid, event, JSONdata, created_datetime) "
+									+ "wp_twitter_data"
+									+ " (userid, event, JSONdata, created_datetime) "
 									+ "VALUES ("
 									+ "?, ?, ?, ?"
 									+ ")");
@@ -52,9 +55,45 @@ public class Database {
 			System.err.println("DB Insert " + preparedStatement.toString())  ;
 		} catch (SQLException e) {
 			e.printStackTrace();
-		} finally {			
+		} finally {		
 			connection.close();
 		}			
 	}
+	
+	/**
+	 * Create a custom table in the wordpress database. Checks if the supplied table 
+	 * name is present in the database. if not then it is created.
+	 *  
+	 * @param createSQL
+	 * @param tableName
+	 * @throws SQLException
+	 */
+	public void createCustomTable(String createSQL, String tableName) throws SQLException {
+		if (!doesTableExist(tableName)) {			
+			Connection connection = getConnection();
+			try {				
+				Statement statement = connection.createStatement();
+				statement.execute(createSQL);				
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {			
+				connection.close();
+			}			
+		}
+	}
 
+	
+	/**
+	 * Checks if the supplied table name is present in the database.
+	 * 
+	 * @param tableName
+	 * @return boolean
+	 * @throws SQLException
+	 */
+	private boolean doesTableExist(String tableName) throws SQLException {
+		Connection connection = getConnection();
+		DatabaseMetaData dbm = connection.getMetaData();
+		ResultSet table = dbm.getTables(null, null, tableName, null);
+		return table.next() ? true : false;
+	}
 }
