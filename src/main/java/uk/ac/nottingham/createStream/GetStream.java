@@ -25,15 +25,15 @@ import twitter4j.conf.Configuration;
 import twitter4j.conf.ConfigurationBuilder;
 
 public class GetStream {
-	/**
-	 * Enter the Twitter application consumer key and consumer secret. 
-	 */
+	
 	private final String consumerKey;
 	private final String consumerSecret;
+	private final Database database;
 	
-	public GetStream(String consumerKey, String consumerSecret) {
-		this.consumerKey = consumerKey;
-		this.consumerSecret = consumerSecret;
+	public GetStream(final Database database, final WordPressUtil.OAuthSettings oauth) {
+		this.database = database;
+		this.consumerKey = oauth.consumerKey;
+		this.consumerSecret = oauth.consumerSecret;
 	}
 	
 	/**
@@ -45,9 +45,10 @@ public class GetStream {
 	 * @throws IllegalStateException
 	 * @throws TwitterException
 	 */
-	public void createStream(final String accessToken, final String accessTokenSecret) throws SQLException, IllegalStateException, TwitterException {		
-		final Database database = new Database();
-		final TwitterStream twitterStream = new TwitterStreamFactory(getConfiguration(accessToken, accessTokenSecret)).getInstance();	
+	public void createStream(final WordPressUtil.WpUser wpUser) throws SQLException, IllegalStateException, TwitterException {		
+		
+		final TwitterStream twitterStream = new TwitterStreamFactory(
+				getConfiguration(wpUser.oauthToken, wpUser.oauthTokenSecret)).getInstance();	
 		final Long userId =  twitterStream.getId();
 		final ArrayList<Long> friendIdsList = new ArrayList<Long>(); 
 		
@@ -63,7 +64,8 @@ public class GetStream {
 				Long currentId = status.getUser().getId();
 				if(userId.equals(currentId)) {
 					try {
-						database.storeTwitterData(userId,
+						database.storeTwitterData(wpUser.id,
+								userId,
 								Event.TWEET.toString(),								
 								TwitterObjectFactory.getRawJSON(status).toString(), 
 								(new Date()).toString());						
@@ -74,7 +76,8 @@ public class GetStream {
 
 	        public void onDeletionNotice(StatusDeletionNotice statusDeletionNotice) {
 				try {
-					database.storeTwitterData(statusDeletionNotice.getUserId(),
+					database.storeTwitterData(wpUser.id,
+							statusDeletionNotice.getUserId(),
 							Event.STATUS_DELETION.toString(),
 							TwitterObjectFactory.getRawJSON(statusDeletionNotice).toString(),
 							(new Date()).toString());
@@ -88,7 +91,9 @@ public class GetStream {
 					JSONObject json = new JSONObject();
 		        	json.put("userId", userId);
 		        	json.put("messageId", directMessageId);
-					database.storeTwitterData(userId,
+					database.storeTwitterData(
+							wpUser.id,
+							userId,
 							Event.MESSAGE_DELETION.toString(),
 							json.toString(),
 							(new Date()).toString());
@@ -115,7 +120,8 @@ public class GetStream {
 	                public void onStatus(Status status) {
 	                	if(status.isRetweet()) {	                		
 	    					try {
-	    						database.storeTwitterData(userId,
+	    						database.storeTwitterData(wpUser.id,
+	    								userId,
 	    								Event.RETWEET.toString(),								
 	    								TwitterObjectFactory.getRawJSON(status).toString(), 
 	    								(new Date()).toString());						
@@ -139,7 +145,9 @@ public class GetStream {
 	         */
 	        public void onFavorite(User source, User target, Status favoritedStatus) {	        	
 				try {
-					database.storeTwitterData(favoritedStatus.getUser().getId(),
+					database.storeTwitterData(
+							wpUser.id,
+							favoritedStatus.getUser().getId(),
 							Event.FAVOURITE.toString(),
 							TwitterObjectFactory.getRawJSON(favoritedStatus).toString(),
 							(new Date()).toString());
@@ -152,7 +160,9 @@ public class GetStream {
 	         */
 	        public void onUnfavorite(User source, User target, Status unfavoritedStatus) {
 				try {
-					database.storeTwitterData(unfavoritedStatus.getUser().getId(),
+					database.storeTwitterData(
+							wpUser.id,
+							unfavoritedStatus.getUser().getId(),
 							Event.UNFAVOURITE.toString(),
 							TwitterObjectFactory.getRawJSON(unfavoritedStatus).toString(),
 							(new Date()).toString());
@@ -170,7 +180,9 @@ public class GetStream {
 		        	json.put("sourceName", source.getScreenName());
 		        	json.put("followedUserId", followedUser.getId());	
 		        	json.put("followedUserName", followedUser.getScreenName());
-					database.storeTwitterData(userId,
+					database.storeTwitterData(
+							wpUser.id,
+							userId,
 							Event.FOLLOW.toString(),
 							json.toString(),
 							(new Date()).toString());
@@ -192,7 +204,9 @@ public class GetStream {
 		        	json.put("sourceName", source.getScreenName());
 		        	json.put("unfollowedUserId", unfollowedUser.getId());	
 		        	json.put("unfollowedUserName", unfollowedUser.getScreenName());
-					database.storeTwitterData(userId,
+					database.storeTwitterData(
+							wpUser.id,
+							userId,
 							Event.UNFOLLOW.toString(),
 							json.toString(),
 							(new Date()).toString());
@@ -213,7 +227,8 @@ public class GetStream {
 		        	json.put("messageSenderId", directMessage.getSenderId());
 		        	json.put("messageRecipientId", directMessage.getRecipientId());	
 		        	json.put("messageText", directMessage.getText());
-					database.storeTwitterData(userId,
+					database.storeTwitterData(wpUser.id,
+							userId,
 							Event.MESSAGE.toString(),
 							json.toString(),
 							(new Date()).toString());
@@ -240,7 +255,9 @@ public class GetStream {
 		        	json.put("sourceName", source.getScreenName());
 		        	json.put("blockedUserId", blockedUser.getId());	
 		        	json.put("blockedUserName", blockedUser.getScreenName());
-					database.storeTwitterData(userId,
+					database.storeTwitterData(
+							wpUser.id,
+							userId,
 							Event.BLOCK.toString(),
 							json.toString(),
 							(new Date()).toString());
@@ -257,7 +274,9 @@ public class GetStream {
 		        	json.put("sourceName", source.getScreenName());
 		        	json.put("unblockedUserId", unblockedUser.getId());	
 		        	json.put("unblockedUserName", unblockedUser.getScreenName());
-					database.storeTwitterData(userId,
+					database.storeTwitterData(
+							wpUser.id,
+							userId,
 							Event.UNBLOCK.toString(),
 							json.toString(),
 							(new Date()).toString());
@@ -271,7 +290,9 @@ public class GetStream {
 	         */
 	        public void onRetweetedRetweet(User source, User target, Status retweetedStatus) {
 				try {
-					database.storeTwitterData(userId,
+					database.storeTwitterData(
+							wpUser.id,
+							userId,
 							Event.RETWEETED_RETWEET.toString(),
 							TwitterObjectFactory.getRawJSON(retweetedStatus).toString(), 
 									(new Date()).toString());
@@ -284,7 +305,9 @@ public class GetStream {
 	         */
 	        public void onFavoritedRetweet(User source, User target, Status favoritedRetweet) {
 				try {
-					database.storeTwitterData(userId,
+					database.storeTwitterData(
+							wpUser.id,
+							userId,
 							Event.FAVOURITED_RETWEET.toString(),
 							TwitterObjectFactory.getRawJSON(favoritedRetweet).toString(),
 							(new Date()).toString());
@@ -298,7 +321,9 @@ public class GetStream {
 	         */
 	        public void onQuotedTweet(User source, User target, Status quotingTweet) {
 				try {
-					database.storeTwitterData(userId,
+					database.storeTwitterData(
+							wpUser.id,
+							userId,
 							Event.QUOTED_TWEET.toString(),
 							TwitterObjectFactory.getRawJSON(quotingTweet).toString(),
 							(new Date()).toString());

@@ -2,43 +2,37 @@ package uk.ac.nottingham.createStream;
 
 import java.io.File;
 import java.sql.Connection;
-import java.sql.DriverManager;
+
+import com.mchange.v2.c3p0.ComboPooledDataSource;
 
 public class CreateStream {
 
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) 
+	throws Exception {
 
 		WordPressUtil.WpConfig config = 
 				WordPressUtil.parseWpConfig(new File(args[0]));
 		
-		DBConnect.connectionString = "jdbc:mysql://" + config.host + "/" + config.name;
-		DBConnect.dbName = config.username;
-		DBConnect.passsord = config.password;
+		ComboPooledDataSource ds = new ComboPooledDataSource();
+		ds.setDriverClass("com.mysql.jdbc.Driver");
+		ds.setJdbcUrl("jdbc:mysql://" + config.host + "/" + config.name);
+		ds.setUser(config.username);
+		ds.setPassword(config.password);
+		ds.setMaxStatements(100);
 		
-		Class.forName("com.mysql.jdbc.Driver");
-		Connection conn = DriverManager.getConnection(
-				"jdbc:mysql://" + config.host + "/" + config.name,
-				config.username,
-				config.password);
+		Database db = new Database(config, ds);
+		Connection conn = db.getConnection();
 		
-		WordPressUtil.OAuthSettings oauth =
-				WordPressUtil.fetchOAuthSettings(conn, config.dbPrefix);
-		
-		Database database = new Database();
-		
-		final String tableName = "wp_twitter_data";		
-		final String tableSQL = "CREATE TABLE " + tableName 
-				+ " (id bigint(255) NOT NULL AUTO_INCREMENT, "
-				+ "userid bigint(50) NOT NULL, "
-				+ "event varchar(25) NOT NULL, "
-				+ "JSONdata varchar(10000) NOT NULL, "
-				+ "created_datetime varchar(50) NOT NULL, "
-				+ "PRIMARY KEY (id))";
-		
-		database.createCustomTable(tableSQL, tableName);		
-		GetStream stream = new GetStream(oauth.consumerKey, oauth.consumerSecret);		
-		for(WordPressUtil.WpUser user : WordPressUtil.fetchUsers(conn, config.dbPrefix)) {
-			stream.createStream(user.oauthToken, user.oauthTokenSecret);
-		}				
+		try {
+			WordPressUtil.OAuthSettings oauth =
+					WordPressUtil.fetchOAuthSettings(conn, config.dbPrefix);
+			GetStream stream = new GetStream(db, oauth);			
+			for(WordPressUtil.WpUser user : WordPressUtil.fetchUsers(conn, config.dbPrefix)) {
+				stream.createStream(user);
+			}
+		}
+		finally {
+			conn.close();
+		}		
 	}
 }
