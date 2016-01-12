@@ -2,7 +2,6 @@ package uk.ac.nottingham.createStream;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Date;
 
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -30,7 +29,9 @@ public class GetStream {
 	private final String consumerSecret;
 	private final Database database;
 	
-	public GetStream(final Database database, final WordPressUtil.OAuthSettings oauth) {
+	public GetStream(
+			final Database database, 
+			final WordPressUtil.OAuthSettings oauth) {
 		this.database = database;
 		this.consumerKey = oauth.consumerKey;
 		this.consumerSecret = oauth.consumerSecret;
@@ -45,7 +46,11 @@ public class GetStream {
 	 * @throws IllegalStateException
 	 * @throws TwitterException
 	 */
-	public void createStream(final WordPressUtil.WpUser wpUser) throws SQLException, IllegalStateException, TwitterException {		
+	public void createStream(final WordPressUtil.WpUser wpUser) 
+	throws 
+			SQLException, 
+			IllegalStateException, 
+			TwitterException {		
 		
 		final TwitterStream twitterStream = new TwitterStreamFactory(
 				getConfiguration(wpUser.oauthToken, wpUser.oauthTokenSecret)).getInstance();	
@@ -63,27 +68,19 @@ public class GetStream {
 			public void onStatus(Status status) {	
 				Long currentId = status.getUser().getId();
 				if(userId.equals(currentId)) {
-					try {
-						database.storeTwitterData(wpUser.id,
-								userId,
-								Event.TWEET.toString(),								
-								TwitterObjectFactory.getRawJSON(status).toString(), 
-								(new Date()).toString());						
-					} catch (SQLException e) {
-					}					
+					database.store(
+							wpUser.id,
+							userId,
+							Event.TWEET,
+							TwitterObjectFactory.getRawJSON(status).toString());
 				} 
 			}
 
 	        public void onDeletionNotice(StatusDeletionNotice statusDeletionNotice) {
-				try {
-					database.storeTwitterData(wpUser.id,
-							statusDeletionNotice.getUserId(),
-							Event.STATUS_DELETION.toString(),
-							TwitterObjectFactory.getRawJSON(statusDeletionNotice).toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
-				}        	
-	           
+				database.store(wpUser.id,
+						statusDeletionNotice.getUserId(),
+						Event.STATUS_DELETION,
+						TwitterObjectFactory.getRawJSON(statusDeletionNotice).toString());
 	        }
 
 	        public void onDeletionNotice(long directMessageId, long userId) {
@@ -91,13 +88,11 @@ public class GetStream {
 					JSONObject json = new JSONObject();
 		        	json.put("userId", userId);
 		        	json.put("messageId", directMessageId);
-					database.storeTwitterData(
+					database.store(
 							wpUser.id,
 							userId,
-							Event.MESSAGE_DELETION.toString(),
-							json.toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
+							Event.MESSAGE_DELETION,
+							json.toString());
 				} catch (JSONException e) {
 				}	
 	            
@@ -119,14 +114,10 @@ public class GetStream {
 	    		StatusListener statusListner = new StatusListener() {
 	                public void onStatus(Status status) {
 	                	if(status.isRetweet()) {	                		
-	    					try {
-	    						database.storeTwitterData(wpUser.id,
-	    								userId,
-	    								Event.RETWEET.toString(),								
-	    								TwitterObjectFactory.getRawJSON(status).toString(), 
-	    								(new Date()).toString());						
-	    					} catch (SQLException e) {
-	    					}	                		
+	    					database.store(wpUser.id,
+	    							userId,
+	    							Event.RETWEET,
+	    							TwitterObjectFactory.getRawJSON(status).toString());						            		
 	                	}	                	
 	                }
 	                public void onDeletionNotice(StatusDeletionNotice statusDeletionNotice) { }
@@ -144,30 +135,22 @@ public class GetStream {
 	         * is 'favourited' by  authenticated users follower.
 	         */
 	        public void onFavorite(User source, User target, Status favoritedStatus) {	        	
-				try {
-					database.storeTwitterData(
-							wpUser.id,
-							favoritedStatus.getUser().getId(),
-							Event.FAVOURITE.toString(),
-							TwitterObjectFactory.getRawJSON(favoritedStatus).toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
-				}	            
+				database.store(
+						wpUser.id,
+						favoritedStatus.getUser().getId(),
+						Event.FAVOURITE,
+						TwitterObjectFactory.getRawJSON(favoritedStatus).toString());        
 	        }
 
 	        /** 
 	         * 
 	         */
 	        public void onUnfavorite(User source, User target, Status unfavoritedStatus) {
-				try {
-					database.storeTwitterData(
-							wpUser.id,
-							unfavoritedStatus.getUser().getId(),
-							Event.UNFAVOURITE.toString(),
-							TwitterObjectFactory.getRawJSON(unfavoritedStatus).toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
-				}  
+				database.store(
+						wpUser.id,
+						unfavoritedStatus.getUser().getId(),
+						Event.UNFAVOURITE,
+						TwitterObjectFactory.getRawJSON(unfavoritedStatus).toString());
 	        }
 	        
 	        /** 
@@ -180,13 +163,11 @@ public class GetStream {
 		        	json.put("sourceName", source.getScreenName());
 		        	json.put("followedUserId", followedUser.getId());	
 		        	json.put("followedUserName", followedUser.getScreenName());
-					database.storeTwitterData(
+					database.store(
 							wpUser.id,
 							userId,
-							Event.FOLLOW.toString(),
-							json.toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
+							Event.FOLLOW,
+							json.toString());
 				} catch (JSONException e) {
 				}	        	
 	                       
@@ -204,13 +185,11 @@ public class GetStream {
 		        	json.put("sourceName", source.getScreenName());
 		        	json.put("unfollowedUserId", unfollowedUser.getId());	
 		        	json.put("unfollowedUserName", unfollowedUser.getScreenName());
-					database.storeTwitterData(
+					database.store(
 							wpUser.id,
 							userId,
-							Event.UNFOLLOW.toString(),
-							json.toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
+							Event.UNFOLLOW,
+							json.toString());
 				} catch (JSONException e) {
 				}   	        	        	
 	            
@@ -227,12 +206,10 @@ public class GetStream {
 		        	json.put("messageSenderId", directMessage.getSenderId());
 		        	json.put("messageRecipientId", directMessage.getRecipientId());	
 		        	json.put("messageText", directMessage.getText());
-					database.storeTwitterData(wpUser.id,
+					database.store(wpUser.id,
 							userId,
-							Event.MESSAGE.toString(),
-							json.toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
+							Event.MESSAGE,
+							json.toString());
 				} catch (JSONException e) {
 				}               
 	        }
@@ -255,13 +232,11 @@ public class GetStream {
 		        	json.put("sourceName", source.getScreenName());
 		        	json.put("blockedUserId", blockedUser.getId());	
 		        	json.put("blockedUserName", blockedUser.getScreenName());
-					database.storeTwitterData(
+					database.store(
 							wpUser.id,
 							userId,
-							Event.BLOCK.toString(),
-							json.toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
+							Event.BLOCK,
+							json.toString());
 				} catch (JSONException e) {
 				}   
 
@@ -274,13 +249,11 @@ public class GetStream {
 		        	json.put("sourceName", source.getScreenName());
 		        	json.put("unblockedUserId", unblockedUser.getId());	
 		        	json.put("unblockedUserName", unblockedUser.getScreenName());
-					database.storeTwitterData(
+					database.store(
 							wpUser.id,
 							userId,
-							Event.UNBLOCK.toString(),
-							json.toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
+							Event.UNBLOCK,
+							json.toString());
 				} catch (JSONException e) {
 				}   
 	        }
@@ -289,30 +262,22 @@ public class GetStream {
 	         * 
 	         */
 	        public void onRetweetedRetweet(User source, User target, Status retweetedStatus) {
-				try {
-					database.storeTwitterData(
+					database.store(
 							wpUser.id,
 							userId,
-							Event.RETWEETED_RETWEET.toString(),
-							TwitterObjectFactory.getRawJSON(retweetedStatus).toString(), 
-									(new Date()).toString());
-				} catch (SQLException e) {
-				}  
+							Event.RETWEETED_RETWEET,
+							TwitterObjectFactory.getRawJSON(retweetedStatus).toString());
 	        }
 
 	        /** 
 	         * 
 	         */
 	        public void onFavoritedRetweet(User source, User target, Status favoritedRetweet) {
-				try {
-					database.storeTwitterData(
+					database.store(
 							wpUser.id,
 							userId,
-							Event.FAVOURITED_RETWEET.toString(),
-							TwitterObjectFactory.getRawJSON(favoritedRetweet).toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
-				}  
+							Event.FAVOURITED_RETWEET,
+							TwitterObjectFactory.getRawJSON(favoritedRetweet).toString());
 	        }
 
 	        
@@ -320,15 +285,11 @@ public class GetStream {
 	         * 
 	         */
 	        public void onQuotedTweet(User source, User target, Status quotingTweet) {
-				try {
-					database.storeTwitterData(
+					database.store(
 							wpUser.id,
 							userId,
-							Event.QUOTED_TWEET.toString(),
-							TwitterObjectFactory.getRawJSON(quotingTweet).toString(),
-							(new Date()).toString());
-				} catch (SQLException e) {
-				}  
+							Event.QUOTED_TWEET,
+							TwitterObjectFactory.getRawJSON(quotingTweet).toString()); 
 	        }
 
 			public void onException(Exception ex) {	

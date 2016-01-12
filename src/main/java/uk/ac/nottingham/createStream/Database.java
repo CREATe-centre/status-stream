@@ -1,16 +1,22 @@
 package uk.ac.nottingham.createStream;
 
-
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 
 import javax.sql.DataSource;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ParameterizedMessage;
+
 public class Database {	
+	
+	private static final Logger logger = LogManager.getLogger(Database.class); 
 	
 	private final WordPressUtil.WpConfig wpConfig;
 	
@@ -23,99 +29,89 @@ public class Database {
 		bootstrap();
 	}
 	
-	private void bootstrap() 
-	throws SQLException {
-		final String tableName = wpConfig.dbPrefix + "twitter_data";		
-		final String tableSQL = "CREATE TABLE " + tableName 
-				+ " (id bigint(255) NOT NULL AUTO_INCREMENT, "
-				+ "user_id BIGINT(20) NOT NULL, "
-				+ "twitter_user_id BIGINT(50) NOT NULL, "
-				+ "event varchar(25) NOT NULL, "
-				+ "JSONdata text NOT NULL, "
-				+ "created_datetime varchar(50) NOT NULL, "
-				+ "PRIMARY KEY (id))";
-		
-		createCustomTable(tableSQL, tableName);
-	}
-	
-	/**
-	 * Create a connection to the Wordpress MySql database
-	 * @return connection
-	 * @throws SQLException 
-	 */
-	public Connection getConnection() 
-	throws SQLException {
-		return dataSource.getConnection();
-	}
-	
 	/**
 	 * Stores data from the Twitter streaming API in raw JSON format
 	 *  
-	 * @param userId
-	 * @param JSONData
-	 * @param timestamp
+	 * @param userID
+	 * @param twitterUserID
+	 * @param event
+	 * @param data
 	 * @throws SQLException
 	 */
-	public void storeTwitterData(
-			long userID, long twitterUserId, String event, String JSONData, String timestamp) throws SQLException {		
-		Connection connection = getConnection();
+	public void store(
+			long userID, 
+			long twitterUserID, 
+			Event event, 
+			String data) {	
 		try {
-			final PreparedStatement preparedStatement = connection
-					.prepareStatement(
-							"INSERT INTO "
-									+ "wp_twitter_data"
-									+ " (user_id, twitter_user_id, event, JSONdata, created_datetime) "
-									+ "VALUES ("
-									+ "?, ?, ?, ?"
-									+ ")");
-			
-			preparedStatement.setLong(1, userID);
-			preparedStatement.setLong(2, twitterUserId);
-			preparedStatement.setString(3, event);
-			preparedStatement.setString(4, JSONData);
-			preparedStatement.setString(5, timestamp);
-			preparedStatement.execute();
-			System.err.println("DB Insert " + preparedStatement.toString())  ;
+			Connection connection = dataSource.getConnection();
+			try {
+				final PreparedStatement preparedStatement = connection
+						.prepareStatement(
+								"INSERT INTO "
+										+ "wp_twitter_data"
+										+ " (user_id, twitter_user_id, event, data, created_at) "
+										+ "VALUES ("
+										+ "?, ?, ?, ?, ?"
+										+ ")");
+				
+				preparedStatement.setLong(1, userID);
+				preparedStatement.setLong(2, twitterUserID);
+				preparedStatement.setString(3, event.name());
+				preparedStatement.setString(4, data);
+				preparedStatement.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+				logger.trace(new ParameterizedMessage("Database insert: {}", preparedStatement));
+				preparedStatement.execute();
+			}
+			finally {		
+				connection.close();
+			}
 		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {		
-			connection.close();
-		}			
+			logger.error(e.getMessage(), e);
+		} 
 	}
 	
-	/**
-	 * Create a custom table in the wordpress database. Checks if the supplied table 
-	 * name is present in the database. if not then it is created.
-	 *  
-	 * @param createSQL
-	 * @param tableName
-	 * @throws SQLException
-	 */
-	public void createCustomTable(String createSQL, String tableName) throws SQLException {
-		if (!doesTableExist(tableName)) {			
-			Connection connection = getConnection();
-			try {				
-				Statement statement = connection.createStatement();
-				statement.execute(createSQL);				
-			} catch (SQLException e) {
-				e.printStackTrace();
-			} finally {			
-				connection.close();
-			}			
+	private void bootstrap() 
+	throws SQLException {
+		final String tableName = wpConfig.dbPrefix + "twitter_data";		
+		Connection conn = dataSource.getConnection();
+		try {
+			if(doesTableExist(tableName, conn))
+				return;
+			final String sql = "CREATE TABLE " + tableName + " (" 
+					+ "ID BIGINT(20) unsigned NOT NULL AUTO_INCREMENT, "
+					+ "user_id BIGINT(20) unsigned NOT NULL, "
+					+ "twitter_user_id VARCHAR(255) NOT NULL, "
+					+ "event VARCHAR(25) NOT NULL, "
+					+ "data TEXT NOT NULL, "
+					+ "created_at DATETIME NOT NULL, "
+					+ "PRIMARY KEY (ID), "
+					+ "FOREIGN KEY (user_id) REFERENCES " 
+					+ wpConfig.dbPrefix + "users(ID) "
+					+ "ON DELETE CASCADE "
+					+ "ON UPDATE CASCADE "
+					+ ")";
+			
+			Statement s = conn.createStatement();
+			s.execute(sql);
+			s.close();			
+		}
+		finally {
+			conn.close();
 		}
 	}
-
 	
 	/**
 	 * Checks if the supplied table name is present in the database.
 	 * 
 	 * @param tableName
+	 * @param conn
 	 * @return boolean
 	 * @throws SQLException
 	 */
-	private boolean doesTableExist(String tableName) throws SQLException {
-		Connection connection = getConnection();
-		DatabaseMetaData dbm = connection.getMetaData();
+	private boolean doesTableExist(String tableName, Connection conn) 
+	throws SQLException {
+		DatabaseMetaData dbm = conn.getMetaData();
 		ResultSet table = dbm.getTables(null, null, tableName, null);
 		return table.next() ? true : false;
 	}
