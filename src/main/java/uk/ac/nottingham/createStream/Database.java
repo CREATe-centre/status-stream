@@ -62,6 +62,7 @@ public class Database {
 				preparedStatement.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
 				logger.trace(new ParameterizedMessage("Database insert: {}", preparedStatement));
 				preparedStatement.execute();
+				preparedStatement.close();
 			}
 			finally {		
 				connection.close();

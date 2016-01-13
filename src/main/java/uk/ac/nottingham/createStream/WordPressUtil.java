@@ -138,6 +138,14 @@ public class WordPressUtil {
 			this.oauthToken = oauthToken;
 			this.oauthTokenSecret = oauthTokenSecret;
 		}
+		@Override
+		public boolean equals(Object obj) {
+			if(obj instanceof WpUser) {
+				WpUser u = (WpUser)obj;
+				return this.id == u.id;
+			}
+			return super.equals(obj);
+		}
 	}
 	
 	public static List<WpUser> fetchUsers(Connection conn, String dbPrefix)

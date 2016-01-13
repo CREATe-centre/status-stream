@@ -3,13 +3,11 @@ package uk.ac.nottingham.createStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import twitter4j.DirectMessage;
 import twitter4j.JSONObject;
-import twitter4j.FilterQuery;
 import twitter4j.StallWarning;
 import twitter4j.Status;
 import twitter4j.StatusDeletionNotice;
@@ -28,13 +26,21 @@ import static uk.ac.nottingham.createStream.Event.*;
 
 public class GetStream {
 	
+	public static interface StreamCallback {
+		public void onShutdown();
+	}	
+	
 	private static Logger logger = LogManager.getLogger(GetStream.class);
 	
 	private static String msgToString(Object o) {
 		try {
 			return TwitterObjectFactory.getRawJSON(o).toString();
 		} catch (Exception e) {
-			return "EXCEPTION [" + e.getMessage() +"]";
+			if(o == null) {
+				return "EXCEPTION [" + e.getMessage() +"]";
+			} else {
+				return "EXCEPTION [" + e.getMessage() +"][" + o.toString() + "]";
+			}
 		}
 	}
 	
@@ -57,7 +63,9 @@ public class GetStream {
 	 * @throws IllegalStateException
 	 * @throws TwitterException
 	 */
-	public TwitterStream createStream(final WordPressUtil.WpUser wpUser) 
+	public TwitterStream createStream(
+			final WordPressUtil.WpUser wpUser,
+			final StreamCallback callback) 
 	throws TwitterException {		
 		
 		final TwitterStream stream = new TwitterStreamFactory(
@@ -209,6 +217,9 @@ public class GetStream {
 	        
 	        public void onException(Exception ex) {
 	        	logger.error(ex.getMessage(), ex);
+	        	stream.clearListeners();
+	        	stream.cleanUp();
+	        	callback.onShutdown();
 			}	
 
 	        public void onUserListMemberAddition(User addedMember, User listOwner, UserList list) {}
@@ -228,6 +239,7 @@ public class GetStream {
 
 		stream.addListener(userListener);
 		stream.user();	
+		
 		return stream;
 	}
 	
@@ -243,11 +255,12 @@ public class GetStream {
     		TwitterStream twitterStream, 
     		StatusListener statusListener, 
     		ArrayList<Long> friends) {
-        twitterStream.addListener(statusListener);    
+    	//TODO Needs to listen on a centralized stream
+        /*twitterStream.addListener(statusListener);    
         FilterQuery query = new FilterQuery();   
         long[] friendIds = ArrayUtils.toPrimitive(friends.toArray(new Long[0])); 
         query.follow(friendIds);
-        twitterStream.filter(query);        	
+        twitterStream.filter(query);*/        	
     }
 	
     /**

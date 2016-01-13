@@ -2,11 +2,19 @@ package uk.ac.nottingham.createStream;
 
 import java.io.File;
 import java.sql.Connection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
+
+import twitter4j.TwitterStream;
 
 public class CreateStream {
 
@@ -14,30 +22,61 @@ public class CreateStream {
 	
 	public static void main(String[] args) {
 		try {
-			WordPressUtil.WpConfig config = 
+			final WordPressUtil.WpConfig config = 
 					WordPressUtil.parseWpConfig(new File(args[0]));
 			
-			ComboPooledDataSource ds = new ComboPooledDataSource();
+			final ComboPooledDataSource ds = new ComboPooledDataSource();
 			ds.setDriverClass("com.mysql.jdbc.Driver");
 			ds.setJdbcUrl("jdbc:mysql://" + config.host + "/" + config.name);
 			ds.setUser(config.username);
 			ds.setPassword(config.password);
 			ds.setMaxStatements(100);
 			
-			Database db = new Database(config, ds);
-			Connection conn = ds.getConnection();
+			final Database db = new Database(config, ds);
+						
+			final Map<Long, TwitterStream> streams = 
+					Collections.synchronizedMap(
+							new HashMap<Long, TwitterStream>());
 			
-			try {
-				WordPressUtil.OAuthSettings oauth =
-						WordPressUtil.fetchOAuthSettings(conn, config.dbPrefix);
-				GetStream stream = new GetStream(db, oauth);			
-				for(WordPressUtil.WpUser user : WordPressUtil.fetchUsers(conn, config.dbPrefix)) {
-					stream.createStream(user);
+			final ScheduledExecutorService scheduler =
+					Executors.newSingleThreadScheduledExecutor();
+			
+			final Runnable monitor = new Runnable() {
+				@Override
+				public void run() {
+					
+					try {
+						final Connection conn = ds.getConnection();
+						try {
+							//TODO Poll the database listening for changes
+							WordPressUtil.OAuthSettings oauth =
+									WordPressUtil.fetchOAuthSettings(conn, config.dbPrefix);
+							GetStream stream = new GetStream(db, oauth);			
+							for(final WordPressUtil.WpUser user : 
+									WordPressUtil.fetchUsers(conn, config.dbPrefix)) {
+								if(streams.containsKey(user.id))
+									continue;
+								logger.debug("Starting stream for user \"" + user.id + "\"");
+								streams.put(user.id, stream.createStream(user, new GetStream.StreamCallback() {
+									@Override
+									public void onShutdown() {
+										logger.debug("Removing stream for user \"" + user.id + "\"");
+										streams.remove(user);							
+									}
+								}));
+							}
+						} finally {
+							conn.close();
+						}
+					} catch(Exception e) {
+						logger.error(e.getMessage(), e);
+						System.exit(1);
+					}
 				}
-			}
-			finally {
-				conn.close();
-			}
+			};
+			
+			scheduler.scheduleAtFixedRate(monitor, 0, 1, TimeUnit.MINUTES);
+						
 		} catch (Exception e) {
 			logger.error(e.getMessage(), e);
 			System.exit(1);
