@@ -19,6 +19,7 @@ import twitter4j.TwitterStream;
 import twitter4j.TwitterStreamFactory;
 import twitter4j.User;
 import twitter4j.UserList;
+import twitter4j.UserMentionEntity;
 import twitter4j.UserStreamListener;
 import twitter4j.conf.Configuration;
 import twitter4j.conf.ConfigurationBuilder;
@@ -86,6 +87,14 @@ public class GetStream {
 				database.store(wpUser.id, userID, event, msgToString(msg));
 			}
 			
+			private boolean userInArray(UserMentionEntity[] entities, long id) {
+				for(UserMentionEntity entity : entities) {
+					if(entity.getId() == id)
+						return true;
+				}
+				return false;
+			}
+			
 			/**  
 			 * Capture status changes for authenticated user and write to data store.
 			 *  @param status  
@@ -96,6 +105,9 @@ public class GetStream {
 				} else if(msg.isRetweet()
 							&& msg.getRetweetedStatus().getUser().getId() == userID) { 
 					store(RETWEET, msgToString(msg));
+				} else if(msg.getUserMentionEntities().length > 0
+						&& userInArray(msg.getUserMentionEntities(), userID)) {
+					store(MENTION, msgToString(msg));
 				}
 			}
 
