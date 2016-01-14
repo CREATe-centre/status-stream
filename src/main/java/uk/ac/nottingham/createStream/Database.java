@@ -43,6 +43,7 @@ public class Database {
 			long twitterUserID, 
 			Event event, 
 			String data) {	
+		logger.debug(new ParameterizedMessage("Logging event '{}' for user id '{}'", event, userID));
 		try {
 			Connection connection = dataSource.getConnection();
 			try {
@@ -54,15 +55,17 @@ public class Database {
 										+ "VALUES ("
 										+ "?, ?, ?, ?, ?"
 										+ ")");
-				
-				preparedStatement.setLong(1, userID);
-				preparedStatement.setLong(2, twitterUserID);
-				preparedStatement.setString(3, event.name());
-				preparedStatement.setString(4, data);
-				preparedStatement.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
-				logger.trace(new ParameterizedMessage("Database insert: {}", preparedStatement));
-				preparedStatement.execute();
-				preparedStatement.close();
+				try {
+					preparedStatement.setLong(1, userID);
+					preparedStatement.setLong(2, twitterUserID);
+					preparedStatement.setString(3, event.name());
+					preparedStatement.setString(4, data);
+					preparedStatement.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+					logger.trace(new ParameterizedMessage("Database insert: {}", preparedStatement));
+					preparedStatement.execute();
+				} finally {
+					preparedStatement.close();
+				}
 			}
 			finally {		
 				connection.close();

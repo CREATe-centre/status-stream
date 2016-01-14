@@ -1,12 +1,13 @@
 package uk.ac.nottingham.createStream;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.HashSet;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import twitter4j.DirectMessage;
+import twitter4j.FilterQuery;
 import twitter4j.JSONObject;
 import twitter4j.StallWarning;
 import twitter4j.Status;
@@ -39,7 +40,7 @@ public class GetStream {
 			if(o == null) {
 				return "EXCEPTION [" + e.getMessage() +"]";
 			} else {
-				return "EXCEPTION [" + e.getMessage() +"][" + o.toString() + "]";
+				return o.toString();
 			}
 		}
 	}
@@ -71,7 +72,6 @@ public class GetStream {
 		final TwitterStream stream = new TwitterStreamFactory(
 				getConfiguration(wpUser.oauthToken, wpUser.oauthTokenSecret)).getInstance();	
 		final Long userID = stream.getId();
-		final ArrayList<Long> friends = new ArrayList<Long>(); 
 		
 		/*************************
 		 * User Stream Listener
@@ -91,9 +91,12 @@ public class GetStream {
 			 *  @param status  
 			 */
 			public void onStatus(Status msg) {	
-				if(userID.equals(msg.getUser().getId())) {
+				if(userID == msg.getUser().getId()) {
 					store(TWEET, msgToString(msg));
-				} 
+				} else if(msg.isRetweet()
+							&& msg.getRetweetedStatus().getUser().getId() == userID) { 
+					store(RETWEET, msgToString(msg));
+				}
 			}
 
 	        public void onDeletionNotice(StatusDeletionNotice msg) {
@@ -109,31 +112,6 @@ public class GetStream {
 		        json.put("messageId", directMessageId);
 				store(MESSAGE_DELETION, json);
 	        }
-
-	        /** 
-	         * Get the users friend list and invoke the Status listener to capture friends status changes
-	         * @return 
-	         * 
-	         */
-	        public void onFriendList(long[] friendIds) {
-	            for (long friendId : friendIds) {
-	                friends.add(friendId);
-	            }
-	    		StatusListener statusListener = new StatusListener() {
-	                public void onStatus(Status msg) {
-	                	if(msg.isRetweet()) {	                		
-	    					store(FRIEND_RETWEET, msg);						            		
-	                	}	                	
-	                }
-	                public void onDeletionNotice(StatusDeletionNotice statusDeletionNotice) { }
-	                public void onTrackLimitationNotice(int numberOfLimitedStatuses) { }
-	                public void onScrubGeo(long userId, long upToStatusId) { }
-	                public void onStallWarning(StallWarning warning) { }
-	                public void onException(Exception ex) {
-	                }                    
-	            };
-	            invokeStatusListener(stream, statusListener, friends); 	                   
-	        }	        
 	        
 	        /** 
 	         * Captures when authenticated user favourites a tweet or when a tweet 
@@ -215,6 +193,42 @@ public class GetStream {
 				store(QUOTED_TWEET, msgToString(msg)); 
 	        }
 	        
+	        private final StatusListener statusListener = new StatusListener() {
+                public void onStatus(Status msg) {
+                	if(msg.isRetweet() && msg.getRetweetedStatus().getUser().getId() == userID) {	                		
+    					if(friends.contains(new Long(msg.getUser().getId()))) {
+    						store(FRIEND_RETWEET, msg);
+    					} else {
+    						store(FRIEND_OF_FRIEND_RETWEET, msg);
+    					}
+                	}	                	
+                }
+                public void onDeletionNotice(StatusDeletionNotice statusDeletionNotice) { }
+                public void onTrackLimitationNotice(int numberOfLimitedStatuses) { }
+                public void onScrubGeo(long userId, long upToStatusId) { }
+                public void onStallWarning(StallWarning warning) { }
+                public void onException(Exception ex) {
+                }                    
+            };
+            
+            private final HashSet<Long> friends = new HashSet<>();
+	        
+	        /** 
+	         * Get the users friend list and invoke the Status listener to capture friends status changes
+	         * @return 
+	         * 
+	         */
+	        public void onFriendList(long[] ids) {
+	        	friends.clear();
+	        	for(long id : ids)
+	        		friends.add(id);
+	        	logger.debug("Friends list updated");
+	            stream.replaceListener(statusListener, statusListener);
+				FilterQuery query = new FilterQuery();
+				query.follow(ids);
+				stream.filter(query);
+	        }
+	        
 	        public void onException(Exception ex) {
 	        	logger.error(ex.getMessage(), ex);
 	        	stream.clearListeners();
@@ -244,26 +258,6 @@ public class GetStream {
 	}
 	
     /**
-     * Start the Status listener and filter for authenticated users friends.
-     * This is used to capture retweets.   
-     * 
-     * @param twitterStream
-     * @param statusListener
-     * @param friends
-     */
-    public void invokeStatusListener(
-    		TwitterStream twitterStream, 
-    		StatusListener statusListener, 
-    		ArrayList<Long> friends) {
-    	//TODO Needs to listen on a centralized stream
-        /*twitterStream.addListener(statusListener);    
-        FilterQuery query = new FilterQuery();   
-        long[] friendIds = ArrayUtils.toPrimitive(friends.toArray(new Long[0])); 
-        query.follow(friendIds);
-        twitterStream.filter(query);*/        	
-    }
-	
-    /**
 	 * Authorise Twitter OAuth credentials
 	 * 
 	 *  @param token
@@ -273,6 +267,7 @@ public class GetStream {
 	private Configuration getConfiguration(String token, String tokenSecret) {
 		return new ConfigurationBuilder()
 				.setDebugEnabled(true)
+				.setApplicationOnlyAuthEnabled(false)
 				.setJSONStoreEnabled(true)
 				.setOAuthConsumerKey(oauth.consumerKey)
 				.setOAuthConsumerSecret(oauth.consumerSecret)

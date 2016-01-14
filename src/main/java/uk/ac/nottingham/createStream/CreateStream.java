@@ -27,13 +27,20 @@ public class CreateStream {
 			
 			final ComboPooledDataSource ds = new ComboPooledDataSource();
 			ds.setDriverClass("com.mysql.jdbc.Driver");
-			ds.setJdbcUrl("jdbc:mysql://" + config.host + "/" + config.name);
+			ds.setJdbcUrl("jdbc:mysql://" + config.host + "/" + config.name + "?autoReconnect=true");
 			ds.setUser(config.username);
 			ds.setPassword(config.password);
 			ds.setMaxStatements(100);
+			ds.setTestConnectionOnCheckout(true);
 			
 			final Database db = new Database(config, ds);
-						
+			
+			Connection conn = ds.getConnection();
+			final WordPressUtil.OAuthSettings oauth =
+					WordPressUtil.fetchOAuthSettings(conn, config.dbPrefix);
+			conn.close();
+			
+									
 			final Map<Long, TwitterStream> streams = 
 					Collections.synchronizedMap(
 							new HashMap<Long, TwitterStream>());
@@ -48,9 +55,6 @@ public class CreateStream {
 					try {
 						final Connection conn = ds.getConnection();
 						try {
-							//TODO Poll the database listening for changes
-							WordPressUtil.OAuthSettings oauth =
-									WordPressUtil.fetchOAuthSettings(conn, config.dbPrefix);
 							GetStream stream = new GetStream(db, oauth);			
 							for(final WordPressUtil.WpUser user : 
 									WordPressUtil.fetchUsers(conn, config.dbPrefix)) {
@@ -61,7 +65,7 @@ public class CreateStream {
 									@Override
 									public void onShutdown() {
 										logger.debug("Removing stream for user \"" + user.id + "\"");
-										streams.remove(user);							
+										streams.remove(user.id);							
 									}
 								}));
 							}
