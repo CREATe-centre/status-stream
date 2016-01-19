@@ -72,7 +72,27 @@ public class GetStream {
 		
 		final TwitterStream stream = new TwitterStreamFactory(
 				getConfiguration(wpUser.oauthToken, wpUser.oauthTokenSecret)).getInstance();	
-		final Long userID = stream.getId();
+		
+		long uid;
+		long sleep = 10000; // 10 seconds
+		while(true) {
+			try {
+				uid = stream.getId();
+				break;
+			} catch (TwitterException e) {
+				logger.warn(e.getErrorMessage(), e);
+				int code = e.getStatusCode();
+				if(code > 499 && code < 600) {
+					try{ Thread.sleep(sleep); }
+					catch(InterruptedException ie) { }
+					sleep *= 2;
+					continue;
+				}
+				throw e;
+			}
+		}
+		
+		final long userID = uid;
 		
 		/*************************
 		 * User Stream Listener
