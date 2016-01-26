@@ -123,8 +123,11 @@ public class GetStream {
 				if(userID == msg.getUser().getId()) {
 					store(TWEET, msgToString(msg));
 				} else if(msg.isRetweet()
-							&& msg.getRetweetedStatus().getUser().getId() == userID) { 
-					store(RETWEET, msgToString(msg));
+							&& msg.getRetweetedStatus().getUser().getId() == userID) {
+					// Necessary to stop retweets being logged as a general retweet and a friend retweet
+					if(!friends.contains(new Long(msg.getUser().getId()))) {
+						store(RETWEET, msgToString(msg));	
+					}					
 				} else if(msg.getUserMentionEntities().length > 0
 						&& userInArray(msg.getUserMentionEntities(), userID)) {
 					store(MENTION, msgToString(msg));
