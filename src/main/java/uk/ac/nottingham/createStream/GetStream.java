@@ -132,10 +132,17 @@ public class GetStream {
 			}
 
 	        public void onDeletionNotice(StatusDeletionNotice msg) {
-	        	ExceptionlessJSONObject json = new ExceptionlessJSONObject();
+	        	/*
+	        	 * djp - 26.01.16
+	        	 * I think we'll ignore these notices for now, there
+	        	 * seems to be an excessive number of these and I don't
+	        	 * quite understand what they mean. They also aren't
+	        	 * currently being used in the display application.
+	        	 */
+	        	/*ExceptionlessJSONObject json = new ExceptionlessJSONObject();
 		        json.put("userId", msg.getUserId());
 		        json.put("messageId", msg.getStatusId());
-				store(STATUS_DELETION, json);
+				store(STATUS_DELETION, json);*/
 	        }
 
 	        public void onDeletionNotice(long directMessageId, long userId) {
