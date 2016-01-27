@@ -1,10 +1,10 @@
-package uk.ac.nottingham.createStream;
+package uk.ac.nottingham.create.stream;
 
 import java.io.File;
 import java.sql.Connection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -14,11 +14,11 @@ import org.apache.logging.log4j.Logger;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 
-import twitter4j.TwitterStream;
+import uk.ac.nottingham.create.stream.util.WordPressUtil;
 
-public class CreateStream {
+public class CREATe {
 
-	private static final Logger logger = LogManager.getLogger(CreateStream.class);
+	private static final Logger logger = LogManager.getLogger(CREATe.class);
 	
 	public static void main(String[] args) {
 		try {
@@ -41,9 +41,7 @@ public class CreateStream {
 			conn.close();
 			
 									
-			final Map<Long, TwitterStream> streams = 
-					Collections.synchronizedMap(
-							new HashMap<Long, TwitterStream>());
+			final Set<Long> streams = Collections.synchronizedSet(new HashSet<Long>());
 			
 			final ScheduledExecutorService scheduler =
 					Executors.newSingleThreadScheduledExecutor();
@@ -55,19 +53,20 @@ public class CreateStream {
 					try {
 						final Connection conn = ds.getConnection();
 						try {
-							GetStream stream = new GetStream(db, oauth);			
+							StreamFactory stream = new StreamFactory(db, oauth);			
 							for(final WordPressUtil.WpUser user : 
 									WordPressUtil.fetchUsers(conn, config.dbPrefix)) {
-								if(streams.containsKey(user.id))
+								if(streams.contains(user.id))
 									continue;
 								logger.debug("Starting stream for user \"" + user.id + "\"");
-								streams.put(user.id, stream.createStream(user, new GetStream.StreamCallback() {
+								stream.startStream(user, new StreamFactory.Callback() {
 									@Override
 									public void onShutdown() {
 										logger.debug("Removing stream for user \"" + user.id + "\"");
 										streams.remove(user.id);							
 									}
-								}));
+								});
+								streams.add(user.id); 
 							}
 						} finally {
 							conn.close();

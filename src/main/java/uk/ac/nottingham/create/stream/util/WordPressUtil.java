@@ -1,4 +1,4 @@
-package uk.ac.nottingham.createStream;
+package uk.ac.nottingham.create.stream.util;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;

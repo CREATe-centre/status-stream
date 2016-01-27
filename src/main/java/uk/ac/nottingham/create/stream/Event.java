@@ -1,4 +1,4 @@
-package uk.ac.nottingham.createStream;
+package uk.ac.nottingham.create.stream;
 
 /**
  * Enumerator for User and Status event types
@@ -7,16 +7,19 @@ package uk.ac.nottingham.createStream;
  */
 public enum Event {
 	STATUS,
-	STATUS_DELETION,
 	TWEET,
 	QUOTED_TWEET,
 	RETWEET,
 	RETWEETED_RETWEET,
 	FAVOURITED_RETWEET,
-	FAVOURITE,
-	UNFAVOURITE,
-	FOLLOW,
-	UNFOLLOW,
+	YOU_FAVOURITED,
+	FAVOURITED_YOU,
+	YOU_UNFAVOURITED,
+	UNFAVOURITED_YOU,
+	YOU_FOLLOWED,
+	FOLLOWED_YOU,
+	YOU_UNFOLLOWED,
+	UNFOLLOWED_YOU,
 	BLOCK,
 	UNBLOCK,
 	MESSAGE,
