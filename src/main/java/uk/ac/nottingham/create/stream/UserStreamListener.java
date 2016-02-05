@@ -153,15 +153,34 @@ extends UserStreamAdapter {
     }
 
     public void onRetweetedRetweet(User source, User target, Status msg) {
-		store(RETWEETED_RETWEET, msg);
+    	
+    	JSONObject json = new JSONObject()
+    			.put("sourceId", source.getId())
+    			.put("sourceName", source.getScreenName())
+    			.put("targetId", target.getId())
+    			.put("targetUserName", target.getScreenName())
+    			.put("status", JSONObject.createFromSource(Util.toString(msg)));
+		store(RETWEETED_RETWEET, json);
     }
 
     public void onFavoritedRetweet(User source, User target, Status msg) {
-		store(FAVOURITED_RETWEET, msg);
+    	JSONObject json = new JSONObject()
+    			.put("sourceId", source.getId())
+    			.put("sourceName", source.getScreenName())
+    			.put("targetId", target.getId())
+    			.put("targetUserName", target.getScreenName())
+    			.put("status", JSONObject.createFromSource(Util.toString(msg)));
+		store(FAVOURITED_RETWEET, json);
     }
     
     public void onQuotedTweet(User source, User target, Status msg) {
-		store(QUOTED_TWEET, msg); 
+    	JSONObject json = new JSONObject()
+    			.put("sourceId", source.getId())
+    			.put("sourceName", source.getScreenName())
+    			.put("targetId", target.getId())
+    			.put("targetUserName", target.getScreenName())
+    			.put("status", JSONObject.createFromSource(Util.toString(msg)));
+		store(QUOTED_TWEET, json); 
     }
     
     public void onFriendList(long[] ids) {
