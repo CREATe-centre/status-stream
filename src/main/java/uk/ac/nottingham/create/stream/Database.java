@@ -162,7 +162,7 @@ public class Database {
 		try
 		{
 			ResultSet rs = s.executeQuery("SELECT * FROM " + dataTableName 
-					+ " user_id = " + userID 
+					+ " WHERE user_id = " + userID 
 					+ " AND event = 'TWEET' ORDER BY created_at DESC");			
 			while(rs.next()) {
 				Status status = null;
