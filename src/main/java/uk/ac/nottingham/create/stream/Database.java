@@ -14,6 +14,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 
+import twitter4j.JSONException;
+import twitter4j.JSONObject;
+import twitter4j.Status;
+import twitter4j.TwitterException;
+import twitter4j.TwitterObjectFactory;
 import uk.ac.nottingham.create.stream.util.WordPressUtil;
 
 public class Database {	
@@ -24,10 +29,16 @@ public class Database {
 	
 	private final DataSource dataSource;
 	
+	private final String dataTableName;
+	
+	private final String linkTableName;
+	
 	public Database(WordPressUtil.WpConfig wpConfig, DataSource dataSource) 
 	throws SQLException {
 		this.wpConfig = wpConfig;
 		this.dataSource = dataSource;
+		this.dataTableName = wpConfig.dbPrefix + "twitter_data";
+		this.linkTableName =  wpConfig.dbPrefix + "twitter_data_links";
 		bootstrap();
 	}
 	
@@ -49,42 +60,132 @@ public class Database {
 		try {
 			Connection connection = dataSource.getConnection();
 			try {
-				final PreparedStatement preparedStatement = connection
+				final PreparedStatement dataPs = connection
 						.prepareStatement(
 								"INSERT INTO "
-										+ "wp_twitter_data"
+										+ dataTableName
 										+ " (user_id, twitter_user_id, event, data, created_at) "
 										+ "VALUES ("
 										+ "?, ?, ?, ?, ?"
-										+ ")");
+										+ ")", Statement.RETURN_GENERATED_KEYS);
 				try {
-					preparedStatement.setLong(1, userID);
-					preparedStatement.setLong(2, twitterUserID);
-					preparedStatement.setString(3, event.name());
-					preparedStatement.setString(4, data);
-					preparedStatement.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
-					logger.trace(new ParameterizedMessage("Database insert: {}", preparedStatement));
-					preparedStatement.execute();
+					dataPs.setLong(1, userID);
+					dataPs.setLong(2, twitterUserID);
+					dataPs.setString(3, event.name());
+					dataPs.setString(4, data);
+					dataPs.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+					logger.trace(new ParameterizedMessage("Database insert: {}", dataPs));
+					dataPs.executeUpdate();
+					ResultSet rs = dataPs.getGeneratedKeys();
+					if(rs.next()) {
+						long toID = rs.getLong(1);
+						long fromID = findFromID(connection, event, data);
+						if(fromID != -1) {
+							final PreparedStatement linkPs = connection
+									.prepareStatement("INSERT INTO "
+											+ linkTableName
+											+ " (user_id, from_id, to_id) "
+											+ "VALUES (?, ?, ?)");
+							linkPs.setLong(1, userID);
+							linkPs.setLong(2, fromID);
+							linkPs.setLong(3, toID);
+							logger.trace(new ParameterizedMessage("Database insert: {}", linkPs));
+							linkPs.execute();
+						}
+					}										
 				} finally {
-					preparedStatement.close();
+					dataPs.close();
 				}
 			}
 			finally {		
 				connection.close();
 			}
-		} catch (SQLException e) {
+		} catch (Exception e) {
 			logger.error(e.getMessage(), e);
 		} 
 	}
 	
+	private long findFromID(Connection conn, Event event, String data)
+	throws 	TwitterException,
+			SQLException,
+			JSONException {
+		Status status = null;
+		switch (event) {
+		case YOU_FAVOURITED:
+		case YOU_UNFAVOURITED:
+		case BLOCK:
+		case UNBLOCK:
+		case MESSAGE:
+		case MESSAGE_DELETION:
+		case UNFOLLOWED_YOU:
+		case YOU_FOLLOWED:
+		case YOU_UNFOLLOWED:
+		case FOLLOWED_YOU:
+		case RETWEETED_RETWEET:
+			return -1;
+		case TWEET:
+		case STATUS:
+		case MENTION:
+			status = TwitterObjectFactory.createStatus(data);
+			if(status.getInReplyToStatusId() != -1) {
+				return findStatusByID(conn, status.getInReplyToStatusId());
+			} else {
+				return -1;
+			}
+		case RETWEET:
+		case FRIEND_RETWEET:
+		case FRIEND_OF_FRIEND_RETWEET:
+			status = TwitterObjectFactory.createStatus(data);
+			return findStatusByID(conn, status.getRetweetedStatus().getId());
+		case FAVOURITED_RETWEET:
+			status = TwitterObjectFactory.createStatus(new JSONObject(data).getString("status"));
+			long linkedID = findStatusByID(conn, status.getId());
+			if(linkedID != -1) {
+				return linkedID;
+			} else {
+				return findStatusByID(conn, status.getRetweetedStatus().getId());
+			}
+		case FAVOURITED_YOU:
+		case UNFAVOURITED_YOU:
+			status = TwitterObjectFactory.createStatus(new JSONObject(data).getString("status"));
+			return findStatusByID(conn, status.getId());
+		case QUOTED_TWEET:
+			status = TwitterObjectFactory.createStatus(new JSONObject(data).getString("status"));
+			return findStatusByID(conn, status.getQuotedStatusId());
+		}
+		return -1;
+	}
+	
+	private long findStatusByID(Connection conn, long id)
+	throws SQLException { 
+		Statement s = conn.createStatement();
+		try
+		{
+			ResultSet rs = s.executeQuery("SELECT * FROM " + dataTableName);			
+			while(rs.next()) {
+				Status status = null;
+				try {
+					status = TwitterObjectFactory.createStatus(rs.getString("data"));
+				} catch(Exception e) {
+					continue;
+				}
+				if(status.getId() == id) {
+					return rs.getLong("ID");
+				}
+			}
+		} finally {
+			s.close();
+		}
+		return -1;
+	}
+	
 	private void bootstrap() 
 	throws SQLException {
-		final String tableName = wpConfig.dbPrefix + "twitter_data";		
 		Connection conn = dataSource.getConnection();
 		try {
-			if(doesTableExist(tableName, conn))
+			if(doesTableExist(dataTableName, conn))
 				return;
-			final String sql = "CREATE TABLE " + tableName + " (" 
+			final String dataTableSql = "CREATE TABLE " + dataTableName + " (" 
 					+ "ID BIGINT(20) unsigned NOT NULL AUTO_INCREMENT, "
 					+ "user_id BIGINT(20) unsigned NOT NULL, "
 					+ "twitter_user_id VARCHAR(255) NOT NULL, "
@@ -97,9 +198,29 @@ public class Database {
 					+ "ON DELETE CASCADE "
 					+ "ON UPDATE CASCADE "
 					+ ")";
+			final String linkTableSql = "CREATE TABLE " + linkTableName + "("
+					+ "ID BIGINT(20) unsigned NOT NULL AUTO_INCREMENT, "
+					+ "user_id BIGINT(20) unsigned NOT NULL, "
+					+ "from_id BIGINT(20) unsigned NOT NULL, "
+					+ "to_id BIGINT(20) unsigned NOT NULL, "
+					+ "PRIMARY KEY (ID), "
+					+ "FOREIGN KEY (user_id) REFERENCES " 
+					+ wpConfig.dbPrefix + "users(ID) "
+					+ "ON DELETE CASCADE "
+					+ "ON UPDATE CASCADE, "
+					+ "FOREIGN KEY (from_id) REFERENCES " 
+					+ dataTableName + "(ID) "
+					+ "ON DELETE CASCADE "
+					+ "ON UPDATE CASCADE, "
+					+ "FOREIGN KEY (to_id) REFERENCES " 
+					+ dataTableName + "(ID) "
+					+ "ON DELETE CASCADE "
+					+ "ON UPDATE CASCADE "
+					+ ")";
 			
 			Statement s = conn.createStatement();
-			s.execute(sql);
+			s.execute(dataTableSql);
+			s.execute(linkTableSql);
 			s.close();			
 		}
 		finally {
