@@ -183,44 +183,45 @@ public class Database {
 	throws SQLException {
 		Connection conn = dataSource.getConnection();
 		try {
-			if(doesTableExist(dataTableName, conn))
-				return;
-			final String dataTableSql = "CREATE TABLE " + dataTableName + " (" 
-					+ "ID BIGINT(20) unsigned NOT NULL AUTO_INCREMENT, "
-					+ "user_id BIGINT(20) unsigned NOT NULL, "
-					+ "twitter_user_id VARCHAR(255) NOT NULL, "
-					+ "event VARCHAR(25) NOT NULL, "
-					+ "data TEXT NOT NULL, "
-					+ "created_at DATETIME NOT NULL, "
-					+ "PRIMARY KEY (ID), "
-					+ "FOREIGN KEY (user_id) REFERENCES " 
-					+ wpConfig.dbPrefix + "users(ID) "
-					+ "ON DELETE CASCADE "
-					+ "ON UPDATE CASCADE "
-					+ ")";
-			final String linkTableSql = "CREATE TABLE " + linkTableName + "("
-					+ "ID BIGINT(20) unsigned NOT NULL AUTO_INCREMENT, "
-					+ "user_id BIGINT(20) unsigned NOT NULL, "
-					+ "from_id BIGINT(20) unsigned NOT NULL, "
-					+ "to_id BIGINT(20) unsigned NOT NULL, "
-					+ "PRIMARY KEY (ID), "
-					+ "FOREIGN KEY (user_id) REFERENCES " 
-					+ wpConfig.dbPrefix + "users(ID) "
-					+ "ON DELETE CASCADE "
-					+ "ON UPDATE CASCADE, "
-					+ "FOREIGN KEY (from_id) REFERENCES " 
-					+ dataTableName + "(ID) "
-					+ "ON DELETE CASCADE "
-					+ "ON UPDATE CASCADE, "
-					+ "FOREIGN KEY (to_id) REFERENCES " 
-					+ dataTableName + "(ID) "
-					+ "ON DELETE CASCADE "
-					+ "ON UPDATE CASCADE "
-					+ ")";
-			
 			Statement s = conn.createStatement();
-			s.execute(dataTableSql);
-			s.execute(linkTableSql);
+			if(!doesTableExist(dataTableName, conn)) {
+				final String dataTableSql = "CREATE TABLE " + dataTableName + " (" 
+						+ "ID BIGINT(20) unsigned NOT NULL AUTO_INCREMENT, "
+						+ "user_id BIGINT(20) unsigned NOT NULL, "
+						+ "twitter_user_id VARCHAR(255) NOT NULL, "
+						+ "event VARCHAR(25) NOT NULL, "
+						+ "data TEXT NOT NULL, "
+						+ "created_at DATETIME NOT NULL, "
+						+ "PRIMARY KEY (ID), "
+						+ "FOREIGN KEY (user_id) REFERENCES " 
+						+ wpConfig.dbPrefix + "users(ID) "
+						+ "ON DELETE CASCADE "
+						+ "ON UPDATE CASCADE "
+						+ ")";
+				s.execute(dataTableSql);
+			}
+			if(!doesTableExist(linkTableName, conn)) {
+				final String linkTableSql = "CREATE TABLE " + linkTableName + "("
+						+ "ID BIGINT(20) unsigned NOT NULL AUTO_INCREMENT, "
+						+ "user_id BIGINT(20) unsigned NOT NULL, "
+						+ "from_id BIGINT(20) unsigned NOT NULL, "
+						+ "to_id BIGINT(20) unsigned NOT NULL, "
+						+ "PRIMARY KEY (ID), "
+						+ "FOREIGN KEY (user_id) REFERENCES " 
+						+ wpConfig.dbPrefix + "users(ID) "
+						+ "ON DELETE CASCADE "
+						+ "ON UPDATE CASCADE, "
+						+ "FOREIGN KEY (from_id) REFERENCES " 
+						+ dataTableName + "(ID) "
+						+ "ON DELETE CASCADE "
+						+ "ON UPDATE CASCADE, "
+						+ "FOREIGN KEY (to_id) REFERENCES " 
+						+ dataTableName + "(ID) "
+						+ "ON DELETE CASCADE "
+						+ "ON UPDATE CASCADE "
+						+ ")";
+				s.execute(linkTableSql);
+			}
 			s.close();			
 		}
 		finally {
