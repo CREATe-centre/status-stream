@@ -79,7 +79,7 @@ public class Database {
 					ResultSet rs = dataPs.getGeneratedKeys();
 					if(rs.next()) {
 						long toID = rs.getLong(1);
-						long fromID = findFromID(connection, event, data);
+						long fromID = findFromID(connection, userID, event, data);
 						if(fromID != -1) {
 							final PreparedStatement linkPs = connection
 									.prepareStatement("INSERT INTO "
@@ -105,7 +105,7 @@ public class Database {
 		} 
 	}
 	
-	private long findFromID(Connection conn, Event event, String data)
+	private long findFromID(Connection conn, long userID, Event event, String data)
 	throws 	TwitterException,
 			SQLException,
 			JSONException {
@@ -128,7 +128,7 @@ public class Database {
 		case MENTION:
 			status = TwitterObjectFactory.createStatus(data);
 			if(status.getInReplyToStatusId() != -1) {
-				return findStatusByID(conn, status.getInReplyToStatusId());
+				return findStatusByID(conn, userID, status.getInReplyToStatusId());
 			} else {
 				return -1;
 			}
@@ -136,32 +136,34 @@ public class Database {
 		case FRIEND_RETWEET:
 		case FRIEND_OF_FRIEND_RETWEET:
 			status = TwitterObjectFactory.createStatus(data);
-			return findStatusByID(conn, status.getRetweetedStatus().getId());
+			return findStatusByID(conn, userID, status.getRetweetedStatus().getId());
 		case FAVOURITED_RETWEET:
 			status = TwitterObjectFactory.createStatus(new JSONObject(data).getString("status"));
-			long linkedID = findStatusByID(conn, status.getId());
+			long linkedID = findStatusByID(conn, userID, status.getId());
 			if(linkedID != -1) {
 				return linkedID;
 			} else {
-				return findStatusByID(conn, status.getRetweetedStatus().getId());
+				return findStatusByID(conn, userID, status.getRetweetedStatus().getId());
 			}
 		case FAVOURITED_YOU:
 		case UNFAVOURITED_YOU:
 			status = TwitterObjectFactory.createStatus(new JSONObject(data).getString("status"));
-			return findStatusByID(conn, status.getId());
+			return findStatusByID(conn, userID, status.getId());
 		case QUOTED_TWEET:
 			status = TwitterObjectFactory.createStatus(new JSONObject(data).getString("status"));
-			return findStatusByID(conn, status.getQuotedStatusId());
+			return findStatusByID(conn, userID, status.getQuotedStatusId());
 		}
 		return -1;
 	}
 	
-	private long findStatusByID(Connection conn, long id)
+	private long findStatusByID(Connection conn, long userID, long id)
 	throws SQLException { 
 		Statement s = conn.createStatement();
 		try
 		{
-			ResultSet rs = s.executeQuery("SELECT * FROM " + dataTableName);			
+			ResultSet rs = s.executeQuery("SELECT * FROM " + dataTableName 
+					+ " user_id = " + userID 
+					+ " AND event = 'TWEET' ORDER BY created_at DESC");			
 			while(rs.next()) {
 				Status status = null;
 				try {
