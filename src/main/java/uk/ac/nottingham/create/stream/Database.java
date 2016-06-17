@@ -163,15 +163,16 @@ public class Database {
 		{
 			ResultSet rs = s.executeQuery("SELECT * FROM " + dataTableName 
 					+ " WHERE user_id = " + userID 
-					+ " AND event = 'TWEET' ORDER BY created_at DESC");			
+					+ " ORDER BY created_at DESC");		
 			while(rs.next()) {
 				Status status = null;
 				try {
-					status = TwitterObjectFactory.createStatus(rs.getString("data"));
+					Event e = Event.valueOf(Event.class, rs.getString("event"));
+					status = getStatus(e, rs.getString("data"));
 				} catch(Exception e) {
 					continue;
 				}
-				if(status.getId() == id) {
+				if(status != null && status.getId() == id) {
 					return rs.getLong("ID");
 				}
 			}
@@ -179,6 +180,39 @@ public class Database {
 			s.close();
 		}
 		return -1;
+	}
+	
+	private Status getStatus(Event event, String data)
+	throws  TwitterException,
+			JSONException {
+		switch (event) {
+		case YOU_FAVOURITED:
+		case YOU_UNFAVOURITED:
+		case BLOCK:
+		case UNBLOCK:
+		case MESSAGE:
+		case MESSAGE_DELETION:
+		case UNFOLLOWED_YOU:
+		case YOU_FOLLOWED:
+		case YOU_UNFOLLOWED:
+		case FOLLOWED_YOU:
+		case RETWEETED_RETWEET:
+			return null;
+		case TWEET:
+		case STATUS:
+		case MENTION:
+		case RETWEET:
+		case FRIEND_RETWEET:
+		case FRIEND_OF_FRIEND_RETWEET:
+			return TwitterObjectFactory.createStatus(data);
+		case FAVOURITED_RETWEET:
+		case FAVOURITED_YOU:
+		case UNFAVOURITED_YOU:
+		case QUOTED_TWEET:
+			return TwitterObjectFactory.createStatus(new JSONObject(data).getString("status"));
+		default:
+			return null;
+		}
 	}
 	
 	private void bootstrap() 
