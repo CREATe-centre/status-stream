@@ -33,12 +33,15 @@ public class Database {
 	
 	private final String linkTableName;
 	
+	private final String analyticsTableName;
+	
 	public Database(WordPressUtil.WpConfig wpConfig, DataSource dataSource) 
 	throws SQLException {
 		this.wpConfig = wpConfig;
 		this.dataSource = dataSource;
 		this.dataTableName = wpConfig.dbPrefix + "twitter_data";
 		this.linkTableName =  wpConfig.dbPrefix + "twitter_data_links";
+		this.analyticsTableName = wpConfig.dbPrefix + "twitter_analytics";
 		bootstrap();
 	}
 	
@@ -257,6 +260,54 @@ public class Database {
 						+ "ON UPDATE CASCADE "
 						+ ")";
 				s.execute(linkTableSql);
+			}
+			if(!doesTableExist(analyticsTableName, conn)) {
+				final String analyticsTableSql = "CREATE TABLE " 
+						+ analyticsTableName + "("
+						+ "ID BIGINT(20) unsigned NOT NULL AUTO_INCREMENT, "
+						+ "status_id BIGINT(20) unsigned NOT NULL, "
+						+ "impressions INT(20) unsigned NOT NULL, "
+						+ "engagements INT(20) unsigned NOT NULL, "
+						+ "retweets INT(20) unsigned NOT NULL, "
+						+ "replies INT(20) unsigned NOT NULL, "
+						+ "likes INT(20) unsigned NOT NULL, "
+						+ "user_profile_clicks INT(20) unsigned NOT NULL, "
+						+ "url_clicks INT(20) unsigned NOT NULL, "
+						+ "hashtag_clicks INT(20) unsigned NOT NULL, "
+						+ "detail_expands INT(20) unsigned NOT NULL, "
+						+ "permalink_clicks INT(20) unsigned NOT NULL, "
+						+ "app_opens INT(20) unsigned NOT NULL, "
+						+ "app_installs INT(20) unsigned NOT NULL, "
+						+ "follows INT(20) unsigned NOT NULL, "
+						+ "email_tweet INT(20) unsigned NOT NULL, "
+						+ "dial_phone INT(20) unsigned NOT NULL, "
+						+ "media_views INT(20) unsigned NOT NULL, "
+						+ "media_engagements INT(20) unsigned NOT NULL, "
+						+ "promoted_impressions INT(20) unsigned NOT NULL, "
+						+ "promoted_engagements INT(20) unsigned NOT NULL, "
+						+ "promoted_retweets INT(20) unsigned NOT NULL, "
+						+ "promoted_replies INT(20) unsigned NOT NULL, "
+						+ "promoted_likes INT(20) unsigned NOT NULL, "
+						+ "promoted_user_profile_clicks INT(20) unsigned NOT NULL, "
+						+ "promoted_url_clicks INT(20) unsigned NOT NULL, "
+						+ "promoted_hashtag_clicks INT(20) unsigned NOT NULL, "
+						+ "promoted_detail_expands INT(20) unsigned NOT NULL, "
+						+ "promoted_permalink_clicks INT(20) unsigned NOT NULL, "
+						+ "promoted_app_opens INT(20) unsigned NOT NULL, "
+						+ "promoted_app_installs INT(20) unsigned NOT NULL, "
+						+ "promoted_follows INT(20) unsigned NOT NULL, "
+						+ "promoted_email_tweet INT(20) unsigned NOT NULL, "
+						+ "promoted_dial_phone INT(20) unsigned NOT NULL, "
+						+ "promoted_media_views INT(20) unsigned NOT NULL, "
+						+ "promoted_media_engagements INT(20) unsigned NOT NULL, "
+						+ "PRIMARY KEY (ID), "
+						+ "FOREIGN KEY (status_id) REFERENCES " 
+						+ dataTableName + "(ID) "
+						+ "ON DELETE CASCADE "
+						+ "ON UPDATE CASCADE "
+						+ ")";
+				
+				s.execute(analyticsTableSql);
 			}
 			s.close();			
 		}
