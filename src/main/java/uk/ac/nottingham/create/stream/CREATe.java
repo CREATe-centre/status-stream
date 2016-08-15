@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 
+import twitter4j.TwitterException;
 import uk.ac.nottingham.create.stream.util.WordPressUtil;
 
 public class CREATe {
@@ -59,13 +60,17 @@ public class CREATe {
 								if(streams.contains(user.id))
 									continue;
 								logger.debug("Starting stream for user \"" + user.id + "\"");
-								stream.startStream(user, new StreamFactory.Callback() {
-									@Override
-									public void onShutdown() {
-										logger.debug("Removing stream for user \"" + user.id + "\"");
-										streams.remove(user.id);							
-									}
-								});
+								try {
+									stream.startStream(user, new StreamFactory.Callback() {
+										@Override
+										public void onShutdown() {
+											logger.debug("Removing stream for user \"" + user.id + "\"");
+											streams.remove(user.id);							
+										}
+									});
+								} catch(TwitterException e) {
+									logger.error("Couldn't start stream for user \"" + user.id + "\"", e);
+								}
 								streams.add(user.id); 
 							}
 						} finally {
