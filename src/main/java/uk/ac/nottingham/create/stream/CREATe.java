@@ -43,6 +43,7 @@ public class CREATe {
 			
 									
 			final Set<Long> streams = Collections.synchronizedSet(new HashSet<Long>());
+			final Set<Long> removedStreams = Collections.synchronizedSet(new HashSet<Long>());
 			
 			final ScheduledExecutorService scheduler =
 					Executors.newSingleThreadScheduledExecutor();
@@ -57,7 +58,7 @@ public class CREATe {
 							StreamFactory stream = new StreamFactory(db, oauth);			
 							for(final WordPressUtil.WpUser user : 
 									WordPressUtil.fetchUsers(conn, config.dbPrefix)) {
-								if(streams.contains(user.id))
+								if(streams.contains(user.id) || removedStreams.contains(user.id))
 									continue;
 								logger.debug("Starting stream for user \"" + user.id + "\"");
 								try {
@@ -65,6 +66,7 @@ public class CREATe {
 										@Override
 										public void onShutdown() {
 											logger.debug("Removing stream for user \"" + user.id + "\"");
+											removedStreams.add(user.id);
 											streams.remove(user.id);							
 										}
 									});
