@@ -89,6 +89,7 @@ public class StreamFactory {
 		return new ConfigurationBuilder()
 				.setDebugEnabled(true)
 				.setApplicationOnlyAuthEnabled(false)
+				.setGZIPEnabled(false)
 				.setJSONStoreEnabled(true)
 				.setOAuthConsumerKey(oauth.consumerKey)
 				.setOAuthConsumerSecret(oauth.consumerSecret)
