@@ -8,7 +8,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import twitter4j.FilterQuery;
+import twitter4j.Twitter;
 import twitter4j.TwitterException;
+import twitter4j.TwitterFactory;
 import twitter4j.TwitterStream;
 import twitter4j.TwitterStreamFactory;
 import twitter4j.conf.Configuration;
@@ -21,7 +23,7 @@ public class StreamFactory {
 	private static final Logger logger = LogManager.getLogger(StreamFactory.class);  
 	
 	public static interface Callback {
-		public void onShutdown();
+		public void onShutdown(boolean permanent);
 	}	
 	
 	private final Database database;
@@ -37,8 +39,17 @@ public class StreamFactory {
 			final Callback callback) 
 	throws TwitterException {		
 		
+		final Twitter twitter = new TwitterFactory(
+				getConfiguration(wpUser.oauthToken, wpUser.oauthTokenSecret)).getInstance();
+		try {
+			twitter.verifyCredentials();
+		} catch(TwitterException e) {
+			callback.onShutdown(e.getStatusCode() == 401);
+			return;
+		}		
+		
 		final TwitterStream userStream = new TwitterStreamFactory(
-				getConfiguration(wpUser.oauthToken, wpUser.oauthTokenSecret)).getInstance();	
+				getConfiguration(wpUser.oauthToken, wpUser.oauthTokenSecret)).getInstance();
 		final TwitterStream friendStream = new TwitterStreamFactory(
 				getConfiguration(wpUser.oauthToken, wpUser.oauthTokenSecret)).getInstance();
 		
@@ -52,7 +63,7 @@ public class StreamFactory {
 				userStream.cleanUp();
 				friendStream.clearListeners();
 				friendStream.cleanUp();
-		    	callback.onShutdown();				
+		    	callback.onShutdown(false);				
 			}
 		};
 		
@@ -71,7 +82,7 @@ public class StreamFactory {
 					public void doAction(long[] ids) {
 						FilterQuery query = new FilterQuery();
 						query.follow(ids);
-						friendStream.filter(query);
+						/*friendStream.filter(query);*/
 					}
 				}, database) {
 			public void onException(Exception e) {

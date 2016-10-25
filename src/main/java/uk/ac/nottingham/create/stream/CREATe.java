@@ -64,9 +64,11 @@ public class CREATe {
 								try {
 									stream.startStream(user, new StreamFactory.Callback() {
 										@Override
-										public void onShutdown() {
+										public void onShutdown(boolean permanent) {
 											logger.debug("Removing stream for user \"" + user.id + "\"");
-											removedStreams.add(user.id);
+											if(permanent) {
+												removedStreams.add(user.id);
+											}
 											streams.remove(user.id);							
 										}
 									});
