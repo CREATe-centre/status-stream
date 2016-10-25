@@ -44,6 +44,7 @@ public class StreamFactory {
 		try {
 			twitter.verifyCredentials();
 		} catch(TwitterException e) {
+			logger.info("Unable to verify credentials for user \"" + wpUser.id + "\"");
 			callback.onShutdown(e.getStatusCode() == 401);
 			return;
 		}		
@@ -72,7 +73,8 @@ public class StreamFactory {
 		final FriendStreamListener friendListener = new FriendStreamListener(
 				wpUser, twitterID, friends, database) {
 			public void onException(Exception e) {
-				onException.doAction(e);
+				// Allow twitter4j to attempt reconnection
+				//onException.doAction(e);
 			}
 		};
 				
@@ -82,7 +84,7 @@ public class StreamFactory {
 					public void doAction(long[] ids) {
 						FilterQuery query = new FilterQuery();
 						query.follow(ids);
-						/*friendStream.filter(query);*/
+						friendStream.filter(query);
 					}
 				}, database) {
 			public void onException(Exception e) {

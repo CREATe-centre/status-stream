@@ -109,8 +109,6 @@ extends UserStreamAdapter {
     }
     
     public void onUnfollow(User source, User unfollowedUser) {
-    	// TODO - When a user unfollows 'you', the streaming API
-    	// doesn't send that, is there a workaround?
 		JSONObject json = new JSONObject()
 				.put("sourceId", source.getId())
 				.put("sourceName", source.getScreenName())
